@@ -73,16 +73,23 @@ public class ExtendedUserResource extends AbstractSpagoBIResource
             usersDao = DAOFactory.getSbiUserDAO();
             usersDao.setUserProfile(getUserProfile());
             sbiUser = usersDao.loadSbiUserByUserId(id);
+            if (sbiUser == null)
+                throw new SpagoBIRestServiceException("Item with selected id: " + id + " doesn't exists",
+                    buildLocaleFromSession(), (Throwable) null);
             // reload user by id as loadSbiUserByUserId doesn't load user associated data, e.g. roles
             sbiUser = usersDao.loadSbiUserById(sbiUser.getId());
             user = hib.toUserBO(sbiUser);
             return Response.ok(user).build();
         }
+        catch (SpagoBIRestServiceException e)
+        {
+            throw e;
+        }
         catch (Exception e)
         {
-            logger.error("User with selected id: " + id + " doesn't exists", e);
-            throw new SpagoBIRestServiceException("Item with selected id: " + id + " doesn't exists",
-                buildLocaleFromSession(), e);
+            String msg = "User with selected id: " + id + " doesn't exists";
+            logger.error(msg, e);
+            throw new SpagoBIRestServiceException(msg, buildLocaleFromSession(), e);
         }
     }
 }
