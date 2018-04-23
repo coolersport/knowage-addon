@@ -27,7 +27,6 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.hibernate.Session;
-import org.mindrot.jbcrypt.BCrypt;
 
 import it.eng.spago.base.SourceBean;
 import it.eng.spago.configuration.ConfigSingleton;
@@ -51,6 +50,7 @@ import it.eng.spagobi.profiling.bean.SbiUserAttributes;
 import it.eng.spagobi.profiling.bean.SbiUserAttributesId;
 import it.eng.spagobi.profiling.dao.ISbiAttributeDAO;
 import it.eng.spagobi.profiling.dao.ISbiUserDAO;
+import it.eng.spagobi.security.Password;
 import it.eng.spagobi.utilities.assertion.Assert;
 import it.eng.spagobi.utilities.exceptions.SpagoBIRuntimeException;
 
@@ -64,7 +64,6 @@ public class InternalSecurityInitializer extends SpagoBIInitializer
 
     public InternalSecurityInitializer()
     {
-        System.err.println("============================================ INIT ");
         targetComponentName = "InternalSecurity";
         configurationFileName = "it/eng/spagobi/commons/initializers/metadata/config/internal_profiling.xml";
     }
@@ -181,11 +180,9 @@ public class InternalSecurityInitializer extends SpagoBIInitializer
     @Override
     protected SourceBean getConfiguration() throws Exception
     {
-        System.err.println("============================================ GETCONF ");
         SourceBean config = (SourceBean) ConfigSingleton.getInstance().getAttribute(INTERNAL_SECURITY_CONFIG_TAG_NAME);
         if (config == null)
         {
-            System.err.println("============================================ GETCONF ");
             throw new Exception("Internal security configuration not found!!!");
         }
         return config;
@@ -293,7 +290,6 @@ public class InternalSecurityInitializer extends SpagoBIInitializer
             List<SourceBean> defaultsUsersSB = config.getAttributeAsList("DEFAULT_USERS.USER");
             logger.debug("Succesfully read from configuration [" + defaultsUsersSB.size() + "] defualt user(s)");
 
-            String salt = BCrypt.gensalt();
             for (SourceBean defaultUserSB : defaultsUsersSB)
             {
 
@@ -307,7 +303,7 @@ public class InternalSecurityInitializer extends SpagoBIInitializer
                 {
                     try
                     {
-                        String pwd = BCrypt.hashpw(password, salt);
+                        String pwd = Password.encriptPassword(password);
                         defaultUser.setPassword(pwd);
                     }
                     catch (Exception e)
