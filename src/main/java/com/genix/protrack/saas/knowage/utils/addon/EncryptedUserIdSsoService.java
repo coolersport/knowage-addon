@@ -1,6 +1,6 @@
 /*
  * FILENAME
- *     NoopSsoService.java
+ *     EncryptedUserIdSsoService.java
  *
  * FILE LOCATION
  *     $Source$
@@ -25,11 +25,12 @@
  *     with Genix Ventures.
  */
 
-package com.genix.protrack.saas.knowage.addon;
+package com.genix.protrack.saas.knowage.utils.addon;
 
 import java.io.IOException;
 
 import javax.portlet.PortletSession;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
@@ -41,17 +42,22 @@ import it.eng.spagobi.services.security.exceptions.SecurityException;
 // NOTE: Import specific classes without using wildcards.
 //
 
-public class NoopSsoService implements SsoServiceInterface
+public class EncryptedUserIdSsoService implements SsoServiceInterface
 {
     @Override
     public String readTicket(final HttpSession session) throws IOException
     {
-        return null;
+        return "NA";
     }
 
     @Override
     public String readUserIdentifier(final HttpServletRequest request)
     {
+        for (Cookie c : request.getCookies())
+        {
+            if ("sess".equals(c.getName()))
+                return Utils.decrypt(c.getValue());
+        }
         return null;
     }
 

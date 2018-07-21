@@ -37,6 +37,12 @@ import it.eng.spagobi.services.security.service.ISecurityServiceSupplier;
 @SuppressWarnings("all")
 public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupplier
 {
+    public interface AuthenticationCallback
+    {
+        void authenticationSucceeded(String userId);
+    }
+
+    public static final ThreadLocal<AuthenticationCallback> CALLBACK = new ThreadLocal<>();
 
     static private Logger logger = Logger.getLogger(InternalSecurityServiceSupplierImpl.class);
 
@@ -75,6 +81,10 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
             obj.setIsSuperadmin(user.getIsSuperadmin());
 
             logger.debug("OUT");
+
+            if (CALLBACK.get() != null)
+                CALLBACK.get().authenticationSucceeded(userId);
+
             return obj;
         }
         catch (Exception e)
