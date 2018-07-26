@@ -8,4 +8,8 @@ Drop all classes under webapps/knowage/WEB-INF/classes keeping their respective 
 ## Purposes
 
 1. Using BCrypt for internal password encryption.
-2. TBC
+2. Secure implementation of SsoServiceInterface (instead of default FakeSsoService)
+
+## Application
+
+See https://github.com/coolersport/docker-secure-knowage-server.
