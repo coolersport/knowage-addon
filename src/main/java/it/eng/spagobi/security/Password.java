@@ -32,6 +32,7 @@ import org.mindrot.jbcrypt.BCrypt;
 @SuppressWarnings("all")
 public class Password
 {
+    // XXX Genix custom code
     private static final Pattern BCRYPTED = Pattern.compile("^\\$2[abxy]\\$[0-9]+\\$.{53}$"); //$NON-NLS-1$
 
     private String value = "";
@@ -77,6 +78,7 @@ public class Password
 
         if (encValue != null)
         {
+            // XXX Genix custom code
             encValue = BCrypt.hashpw(value, BCrypt.gensalt());
         }
         return encValue;
@@ -109,6 +111,7 @@ public class Password
      */
     public static String encriptPassword(String password) throws Exception
     {
+        // XXX Genix custom code
         if (password != null && !BCRYPTED.matcher(password).matches())
         {
             Password hashPass = new Password(password);

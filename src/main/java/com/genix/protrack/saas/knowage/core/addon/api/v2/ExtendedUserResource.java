@@ -25,7 +25,7 @@
  *     with Genix Ventures.
  */
 
-package com.genix.protrack.saas.knowage.addon.api.v2;
+package com.genix.protrack.saas.knowage.core.addon.api.v2;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -88,7 +88,7 @@ public class ExtendedUserResource extends AbstractSpagoBIResource
         catch (Exception e)
         {
             String msg = "User with selected id: " + id + " doesn't exists";
-            logger.error(msg, e);
+            logger.info(msg, e);
             throw new SpagoBIRestServiceException(msg, buildLocaleFromSession(), e);
         }
     }

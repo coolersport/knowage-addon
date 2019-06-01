@@ -18,6 +18,8 @@
 package it.eng.spagobi.security;
 
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -29,22 +31,28 @@ import it.eng.spago.error.EMFUserError;
 import it.eng.spagobi.commons.dao.DAOFactory;
 import it.eng.spagobi.commons.dao.IRoleDAO;
 import it.eng.spagobi.commons.metadata.SbiExtRoles;
+import it.eng.spagobi.profiling.PublicProfile;
 import it.eng.spagobi.profiling.bean.SbiUser;
 import it.eng.spagobi.profiling.bean.SbiUserAttributes;
+import it.eng.spagobi.services.common.JWTSsoService;
 import it.eng.spagobi.services.security.bo.SpagoBIUserProfile;
 import it.eng.spagobi.services.security.service.ISecurityServiceSupplier;
 
-@SuppressWarnings("all")
 public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupplier
 {
+
+    // XXX Genix custom code
     public interface AuthenticationCallback
     {
         void authenticationSucceeded(String userId);
     }
 
+    // XXX Genix custom code
     public static final ThreadLocal<AuthenticationCallback> CALLBACK = new ThreadLocal<>();
 
     static private Logger logger = Logger.getLogger(InternalSecurityServiceSupplierImpl.class);
+
+    private static int USER_JWT_TOKEN_EXPIRE_HOURS = 10; // JWT token for regular users will expire in 10 HOURS
 
     private SpagoBIUserProfile checkAuthentication(final SbiUser user, final String userId, final String psw)
     {
@@ -53,6 +61,7 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
         if (userId == null)
         {
             return null;
+
         }
 
         // get user from database
@@ -61,12 +70,13 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
         {
 
             String password = user.getPassword();
+            //String encrPass = Password.encriptPassword(psw);
             if (password == null || password.length() == 0)
             {
                 logger.error("UserName/pws not defined into database");
                 return null;
             }
-            else if (!BCrypt.checkpw(psw, password))
+            else if (!BCrypt.checkpw(psw, password)) // XXX Genix custom code
             {
                 logger.error("UserName/pws not found into database");
                 return null;
@@ -74,7 +84,13 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
 
             logger.debug("Logged in with SHA pass");
             SpagoBIUserProfile obj = new SpagoBIUserProfile();
-            obj.setUniqueIdentifier(user.getUserId());
+
+            Calendar calendar = Calendar.getInstance();
+            calendar.add(Calendar.HOUR, USER_JWT_TOKEN_EXPIRE_HOURS);
+            Date expiresAt = calendar.getTime();
+
+            String jwtToken = JWTSsoService.userId2jwtToken(userId, expiresAt);
+            obj.setUniqueIdentifier(jwtToken);
             obj.setUserId(user.getUserId());
             obj.setUserName(user.getFullName());
             obj.setOrganization(user.getCommonInfo().getOrganization());
@@ -82,6 +98,7 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
 
             logger.debug("OUT");
 
+            // XXX Genix custom code
             if (CALLBACK.get() != null)
                 CALLBACK.get().authenticationSucceeded(userId);
 
@@ -137,12 +154,24 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
     }
 
     @Override
-    public SpagoBIUserProfile createUserProfile(final String userId)
+    public SpagoBIUserProfile createUserProfile(final String jwtToken)
     {
-        logger.debug("IN - userId: " + userId);
+        logger.debug("IN - JWT token: " + jwtToken);
+        String userId = JWTSsoService.jwtToken2userId(jwtToken);
+        logger.debug("userId: " + userId);
         SpagoBIUserProfile profile = null;
+
         try
         {
+
+            // check if user is public then create public profile
+            if (PublicProfile.isPublicUser(jwtToken))
+            {
+                profile = PublicProfile.createPublicUserProfile(userId);
+                logger.debug("Built public profile");
+                return profile;
+            }
+
             SbiUser user = DAOFactory.getSbiUserDAO().loadSbiUserByUserId(userId);
 
             if (user == null)
@@ -152,7 +181,7 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
             }
 
             profile = new SpagoBIUserProfile();
-            profile.setUniqueIdentifier(user.getUserId());
+            profile.setUniqueIdentifier(jwtToken);
             profile.setUserId(user.getUserId());
             profile.setUserName(user.getFullName());
             profile.setOrganization(user.getCommonInfo().getOrganization());
@@ -213,6 +242,7 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
             logger.error(e.getMessage(), e);
             return null;
         }
+
         logger.debug("OUT");
         return profile;
 
@@ -221,7 +251,7 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
     @Override
     public SpagoBIUserProfile checkAuthenticationToken(final String token)
     {
-        return null;
+        return this.createUserProfile(token);
     }
 
 }
