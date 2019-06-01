@@ -58,16 +58,16 @@ public class LoginModuleEx extends LoginModule implements AuthenticationCallback
     }
 
     @Override
-    public void authenticationSucceeded(final String userId)
+    public void authenticationSucceeded(final String jwtToken)
     {
-        this.getHttpResponse().addCookie(ssoCookie(Utils.encrypt(userId)));
+        this.getHttpResponse().addCookie(ssoCookie(Utils.encrypt(jwtToken)));
     }
 
-    static Cookie ssoCookie(final String userId)
+    static Cookie ssoCookie(final String jwtToken)
     {
-        Cookie cookie = new Cookie("sess", userId);
+        Cookie cookie = new Cookie("sess", jwtToken);
         cookie.setPath("/");
-        cookie.setMaxAge(userId == null ? -1 : 8 * 60 * 60);
+        cookie.setMaxAge(jwtToken == null ? -1 : 8 * 60 * 60);
         return cookie;
     }
 }

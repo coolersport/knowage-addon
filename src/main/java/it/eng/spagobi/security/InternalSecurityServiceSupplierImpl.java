@@ -44,7 +44,7 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
     // XXX Genix custom code
     public interface AuthenticationCallback
     {
-        void authenticationSucceeded(String userId);
+        void authenticationSucceeded(String jwtToken);
     }
 
     // XXX Genix custom code
@@ -100,7 +100,7 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
 
             // XXX Genix custom code
             if (CALLBACK.get() != null)
-                CALLBACK.get().authenticationSucceeded(userId);
+                CALLBACK.get().authenticationSucceeded(jwtToken);
 
             return obj;
         }
