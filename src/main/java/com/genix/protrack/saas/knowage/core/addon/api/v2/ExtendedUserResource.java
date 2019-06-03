@@ -27,12 +27,15 @@
 
 package com.genix.protrack.saas.knowage.core.addon.api.v2;
 
+import static java.lang.String.format;
+
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import it.eng.spagobi.api.AbstractSpagoBIResource;
 import it.eng.spagobi.commons.constants.SpagoBIConstants;
@@ -63,31 +66,22 @@ public class ExtendedUserResource extends AbstractSpagoBIResource
     @Produces(MediaType.APPLICATION_JSON)
     public Response getUserById(@PathParam("id") final String id)
     {
-        ISbiUserDAO usersDao = null;
-        SbiUserDAOHibImpl hib = new SbiUserDAOHibImpl();
         try
         {
-
-            SbiUser sbiUser = new SbiUser();
-            UserBO user = new UserBO();
-            usersDao = DAOFactory.getSbiUserDAO();
-            usersDao.setUserProfile(getUserProfile());
-            sbiUser = usersDao.loadSbiUserByUserId(id);
+            ISbiUserDAO usersDao = DAOFactory.getSbiUserDAO();
+            SbiUser sbiUser = usersDao.loadSbiUserByUserId(id);
             if (sbiUser == null)
-                throw new SpagoBIRestServiceException("Item with selected id: " + id + " doesn't exists",
-                    buildLocaleFromSession(), (Throwable) null);
+                return Response.status(Status.BAD_REQUEST).entity(format("User %s not found", id)).build();
+
+            usersDao.setUserProfile(getUserProfile());
             // reload user by id as loadSbiUserByUserId doesn't load user associated data, e.g. roles
             sbiUser = usersDao.loadSbiUserById(sbiUser.getId());
-            user = hib.toUserBO(sbiUser);
+            UserBO user = new SbiUserDAOHibImpl().toUserBO(sbiUser);
             return Response.ok(user).build();
-        }
-        catch (SpagoBIRestServiceException e)
-        {
-            throw e;
         }
         catch (Exception e)
         {
-            String msg = "User with selected id: " + id + " doesn't exists";
+            String msg = format("Error finding user with selected id: %s", id);
             logger.info(msg, e);
             throw new SpagoBIRestServiceException(msg, buildLocaleFromSession(), e);
         }
