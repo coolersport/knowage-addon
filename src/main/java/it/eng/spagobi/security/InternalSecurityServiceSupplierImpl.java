@@ -27,11 +27,9 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.mindrot.jbcrypt.BCrypt;
 
-import it.eng.spago.error.EMFUserError;
 import it.eng.spagobi.commons.dao.DAOFactory;
 import it.eng.spagobi.commons.dao.IRoleDAO;
 import it.eng.spagobi.commons.metadata.SbiExtRoles;
-import it.eng.spagobi.profiling.PublicProfile;
 import it.eng.spagobi.profiling.bean.SbiUser;
 import it.eng.spagobi.profiling.bean.SbiUserAttributes;
 import it.eng.spagobi.services.common.JWTSsoService;
@@ -70,7 +68,8 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
         {
 
             String password = user.getPassword();
-            //String encrPass = Password.encriptPassword(psw);
+            // XXX Genix custom code
+            //String encrPass = Password.encriptPassword(psw, password.startsWith(Password.PREFIX_SHA_PWD_ENCRIPTING));
             if (password == null || password.length() == 0)
             {
                 logger.error("UserName/pws not defined into database");
@@ -119,19 +118,10 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
 
         if (userId != null)
         {
-            SbiUser user;
-            try
+            SbiUser user = DAOFactory.getSbiUserDAO().loadSbiUserByUserId(userId);
+            if (user == null)
             {
-                user = DAOFactory.getSbiUserDAO().loadSbiUserByUserId(userId);
-                if (user == null)
-                {
-                    logger.error("UserName not found into database");
-                    return null;
-                }
-            }
-            catch (EMFUserError e)
-            {
-                logger.error(e.getMessage(), e);
+                logger.error("UserName not found into database");
                 return null;
             }
             return checkAuthentication(user, userId, psw);
@@ -161,88 +151,69 @@ public class InternalSecurityServiceSupplierImpl implements ISecurityServiceSupp
         logger.debug("userId: " + userId);
         SpagoBIUserProfile profile = null;
 
-        try
+        SbiUser user = DAOFactory.getSbiUserDAO().loadSbiUserByUserId(userId);
+
+        if (user == null)
         {
-
-            // check if user is public then create public profile
-            if (PublicProfile.isPublicUser(jwtToken))
-            {
-                profile = PublicProfile.createPublicUserProfile(userId);
-                logger.debug("Built public profile");
-                return profile;
-            }
-
-            SbiUser user = DAOFactory.getSbiUserDAO().loadSbiUserByUserId(userId);
-
-            if (user == null)
-            {
-                logger.error("UserName [" + userId + "] not found!!");
-                return null;
-            }
-
-            profile = new SpagoBIUserProfile();
-            profile.setUniqueIdentifier(jwtToken);
-            profile.setUserId(user.getUserId());
-            profile.setUserName(user.getFullName());
-            profile.setOrganization(user.getCommonInfo().getOrganization());
-            profile.setIsSuperadmin(user.getIsSuperadmin());
-
-            // get user name
-            String userName = userId;
-            // get roles of the user
-
-            ArrayList<SbiExtRoles> rolesSB = DAOFactory.getSbiUserDAO().loadSbiUserRolesById(user.getId());
-            List roles = new ArrayList();
-            Iterator iterRolesSB = rolesSB.iterator();
-
-            IRoleDAO roleDAO = DAOFactory.getRoleDAO();
-            while (iterRolesSB.hasNext())
-            {
-                SbiExtRoles roleSB = (SbiExtRoles) iterRolesSB.next();
-
-                roles.add(roleSB.getName());
-            }
-            HashMap attributes = new HashMap();
-            ArrayList<SbiUserAttributes> attribs = DAOFactory.getSbiUserDAO().loadSbiUserAttributesById(user.getId());
-            if (attribs != null)
-            {
-                Iterator iterAttrs = attribs.iterator();
-                while (iterAttrs.hasNext())
-                {
-                    // Attribute to lookup
-                    SbiUserAttributes attribute = (SbiUserAttributes) iterAttrs.next();
-
-                    String attributeName = attribute.getSbiAttribute().getAttributeName();
-
-                    String attributeValue = attribute.getAttributeValue();
-                    if (attributeValue != null)
-                    {
-                        logger
-                            .debug("Add attribute. " + attributeName + "=" + attributeName + " to the user" + userName);
-                        attributes.put(attributeName, attributeValue);
-                    }
-                }
-            }
-
-            logger.debug("Attributes load into SpagoBI profile: " + attributes);
-
-            // end load profile attributes
-
-            String[] roleStr = new String[roles.size()];
-            for (int i = 0; i < roles.size(); i++)
-            {
-                roleStr[i] = (String) roles.get(i);
-            }
-
-            profile.setRoles(roleStr);
-            profile.setAttributes(attributes);
-        }
-        catch (EMFUserError e)
-        {
-            logger.error(e.getMessage(), e);
+            logger.error("UserName [" + userId + "] not found!!");
             return null;
         }
 
+        profile = new SpagoBIUserProfile();
+        profile.setUniqueIdentifier(jwtToken);
+        profile.setUserId(user.getUserId());
+        profile.setUserName(user.getFullName());
+        profile.setOrganization(user.getCommonInfo().getOrganization());
+        profile.setIsSuperadmin(user.getIsSuperadmin());
+
+        // get user name
+        String userName = userId;
+        // get roles of the user
+
+        ArrayList<SbiExtRoles> rolesSB = DAOFactory.getSbiUserDAO().loadSbiUserRolesById(user.getId());
+        List roles = new ArrayList();
+        Iterator iterRolesSB = rolesSB.iterator();
+
+        IRoleDAO roleDAO = DAOFactory.getRoleDAO();
+        while (iterRolesSB.hasNext())
+        {
+            SbiExtRoles roleSB = (SbiExtRoles) iterRolesSB.next();
+
+            roles.add(roleSB.getName());
+        }
+        HashMap attributes = new HashMap();
+        ArrayList<SbiUserAttributes> attribs = DAOFactory.getSbiUserDAO().loadSbiUserAttributesById(user.getId());
+        if (attribs != null)
+        {
+            Iterator iterAttrs = attribs.iterator();
+            while (iterAttrs.hasNext())
+            {
+                // Attribute to lookup
+                SbiUserAttributes attribute = (SbiUserAttributes) iterAttrs.next();
+
+                String attributeName = attribute.getSbiAttribute().getAttributeName();
+
+                String attributeValue = attribute.getAttributeValue();
+                if (attributeValue != null)
+                {
+                    logger.debug("Add attribute. " + attributeName + "=" + attributeName + " to the user" + userName);
+                    attributes.put(attributeName, attributeValue);
+                }
+            }
+        }
+
+        logger.debug("Attributes load into SpagoBI profile: " + attributes);
+
+        // end load profile attributes
+
+        String[] roleStr = new String[roles.size()];
+        for (int i = 0; i < roles.size(); i++)
+        {
+            roleStr[i] = (String) roles.get(i);
+        }
+
+        profile.setRoles(roleStr);
+        profile.setAttributes(attributes);
         logger.debug("OUT");
         return profile;
 
